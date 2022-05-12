@@ -1,6 +1,4 @@
-﻿using SodaMachine.Models;
-
-namespace SodaMachine.Interfaces;
+﻿namespace SodaMachine.Interfaces;
 
 internal interface ISodaMachine
 {

@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using SodaMachine.Interfaces;
+﻿using SodaMachine.Interfaces;
 using SodaMachine.Models;
 using SodaMachine.Models.Enums;
 
