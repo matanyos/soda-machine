@@ -26,42 +26,24 @@ public class SodaMachine : ISodaMachine
 
             var input = Console.ReadLine();
 
-            var request = ExtractUserRequest(input);
-            if (request == null) continue;
+            var request = SodaMachineHelper.ExtractUserRequest(input);
 
-            if (request is Request.InsertMoneyRequest insertMoneyRequest)
+            switch (request)
             {
-                //Add to credit
-                money += insertMoneyRequest.Money;
-                Console.WriteLine($"Adding {insertMoneyRequest.Money} to credit");
-            }
-            if (request is Request.OrderRequest orderRequest)
-            {
-                HandleOrderRequest(orderRequest.SodaType);
-            }
-            if (request is Request.SmsOrderRequest smsOrderRequest)
-            {
-                if(inventory.Sodas.Any(x => x.Type == smsOrderRequest.SodaType && x.Quantity > 0))
-                {
-                    Console.WriteLine($"Giving {smsOrderRequest.SodaType} out");
-                    inventory.TakeOneSodaOut(smsOrderRequest.SodaType);
-                }
-                else
-                {
-                    Console.WriteLine($"No {smsOrderRequest.SodaType} left");
-                }
-            }
-            if (request is Request.RecallRequest)
-            {
-                if(money > 0)
-                {
-                    Console.WriteLine("Returning " + money + " to customer");
-                    money = 0;
-                }
-                else
-                {
-                    Console.WriteLine("No Credit");
-                }
+                case null:
+                    continue;
+                case Request.InsertMoneyRequest insertMoneyRequest:
+                    ExecuteInsertMoneyRequest(insertMoneyRequest.Money);
+                    break;
+                case Request.OrderRequest orderRequest:
+                    ExecuteOrderRequest(orderRequest.SodaType);
+                    break;
+                case Request.SmsOrderRequest smsOrderRequest:
+                    ExecuteSmsOrderRequest(smsOrderRequest.SodaType);
+                    break;
+                case Request.RecallRequest:
+                    ExecuteRecallRequest();
+                    break;
             }
         }
     }
@@ -76,7 +58,38 @@ public class SodaMachine : ISodaMachine
         Console.WriteLine("Inserted money: " + money);
         Console.WriteLine("-------\n\n");
     }
-    private void HandleOrderRequest(SodaType sodaType)
+
+    private static void ExecuteRecallRequest()
+    {
+        if (money > 0)
+        {
+            Console.WriteLine("Returning " + money + " to customer");
+            money = 0;
+        }
+        else
+        {
+            Console.WriteLine("No Credit");
+        }
+    }
+    private static void ExecuteInsertMoneyRequest(decimal value)
+    {
+        //Add to credit
+        money += value;
+        Console.WriteLine($"Adding {value} to credit");
+    }
+    private void ExecuteSmsOrderRequest(SodaType sodaType)
+    {
+        if (inventory.Sodas.Any(x => x.Type == sodaType && x.Quantity > 0))
+        {
+            Console.WriteLine($"Giving {sodaType} out");
+            inventory.TakeOneSodaOut(sodaType);
+        }
+        else
+        {
+            Console.WriteLine($"No {sodaType} left");
+        }
+    }
+    private void ExecuteOrderRequest(SodaType sodaType)
     {
         if (inventory.Sodas.Any(x => x.Type == sodaType && x.Quantity > 0))
         {
@@ -101,77 +114,4 @@ public class SodaMachine : ISodaMachine
             Console.WriteLine($"No {sodaType} left");
         }
     }
-
-    private static Request? ExtractUserRequest(string? input)
-    {
-        if (string.IsNullOrEmpty(input))
-            return null;
-
-        if (input.StartsWith("insert", true, CultureInfo.InvariantCulture))
-            return CreateInsertRequest(input);
-
-        if (input.StartsWith("order", true, CultureInfo.InvariantCulture))
-            return CreateOrderRequest(input);
-
-        if (input.StartsWith("sms order", true, CultureInfo.InvariantCulture))
-            return CreateSmsOrderRequest(input);
-
-        if (input.StartsWith("recall", true, CultureInfo.InvariantCulture))
-            return new Request.RecallRequest();
-
-        return null;
-    }
-
-    private static Request? CreateSmsOrderRequest(string input)
-    {
-        var inputs = input.Split(' ');
-        if (inputs.Length < 3)
-            return null;
-
-        var argument = inputs[2];
-
-        return
-            argument != "coke" && argument != "sprite" && argument != "fanta"
-                ? null
-                : argument == "coke"
-                    ? new Request.SmsOrderRequest(SodaType.Coke)
-                    : argument == "sprite"
-                        ? new Request.SmsOrderRequest(SodaType.Sprite)
-                        : new Request.SmsOrderRequest(SodaType.Fanta);
-
-    }
-
-    private static Request? CreateOrderRequest(string input)
-    {
-        var inputs = input.Split(' ');
-        if (inputs.Length < 2)
-            return null;
-
-        var argument = inputs[1];
-
-        return
-            argument != "coke" && argument != "sprite" && argument != "fanta"
-                ? null
-                : argument == "coke"
-                    ? new Request.OrderRequest(SodaType.Coke)
-                    : argument == "sprite"
-                        ? new Request.OrderRequest(SodaType.Sprite)
-                        : new Request.OrderRequest(SodaType.Fanta);
-    }
-
-    private static Request? CreateInsertRequest(string input)
-    {
-        var inputs = input.Split(' ');
-        if (inputs.Length < 2)
-            return null;
-
-        var argument = inputs[1];
-
-        return
-            decimal.TryParse(argument, out var value)
-                ? new Request.InsertMoneyRequest(value)
-                : null;
-    }
-
-
 }
