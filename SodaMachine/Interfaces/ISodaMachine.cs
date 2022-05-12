@@ -6,5 +6,4 @@ internal interface ISodaMachine
 {
     void Start();
     void DisplayMenu();
-    void ExecuteUserRequest(Request request);
 }

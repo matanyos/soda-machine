@@ -1,8 +1,11 @@
-﻿using SodaMachine.Models;
+﻿using System.Globalization;
+using SodaMachine.Interfaces;
+using SodaMachine.Models;
+using SodaMachine.Models.Enums;
 
 namespace SodaMachine;
 
-public class SodaMachine
+public class SodaMachine : ISodaMachine
 {
     private readonly Inventory inventory;
     private static decimal money;
@@ -17,134 +20,158 @@ public class SodaMachine
     /// </summary>
     public void Start()
     {
-        //while (true)
-        //{
-        //    Console.WriteLine("\n\nAvailable commands:");
-        //    Console.WriteLine("insert (money) - Money put into money slot");
-        //    Console.WriteLine("order (coke, sprite, fanta) - Order from machine's inventory");
-        //    Console.WriteLine("sms order (coke, sprite, fanta) - Order sent by sms");
-        //    Console.WriteLine("recall - gives money back");
-        //    Console.WriteLine("-------");
-        //    Console.WriteLine("Inserted money: " + money);
-        //    Console.WriteLine("-------\n\n");
+        while (true)
+        {
+            DisplayMenu();
 
-        //    var input = Console.ReadLine();
+            var input = Console.ReadLine();
 
-        //    if (input.StartsWith("insert"))
-        //    {
-        //        //Add to credit
-        //        money += int.Parse(input.Split(' ')[1]);
-        //        Console.WriteLine("Adding " + int.Parse(input.Split(' ')[1]) + " to credit");
-        //    }
-        //    if (input.StartsWith("order"))
-        //    {
-        //        // split string on space
-        //        var csoda = input.Split(' ')[1];
-        //        //Find out witch kind
-        //        switch (csoda)
-        //        {
-        //            case "coke":
-        //                var coke = inventory[0];
-        //                if (coke.Name == csoda && money > 19 && coke.Nr > 0)
-        //                {
-        //                    Console.WriteLine("Giving coke out");
-        //                    money -= 20;
-        //                    Console.WriteLine("Giving " + money + " out in change");
-        //                    money = 0;
-        //                    coke.Nr--;
-        //                }
-        //                else if (coke.Name == csoda && coke.Nr == 0)
-        //                {
-        //                    Console.WriteLine("No coke left");
-        //                }
-        //                else if (coke.Name == csoda)
-        //                {
-        //                    Console.WriteLine("Need " + (20 - money) + " more");
-        //                }
+            var request = ExtractUserRequest(input);
+            if (request == null) continue;
 
-        //                break;
-        //            case "fanta":
-        //                var fanta = inventory[2];
-        //                if (fanta.Name == csoda && money > 14 && fanta.Nr >= 0)
-        //                {
-        //                    Console.WriteLine("Giving fanta out");
-        //                    money -= 15;
-        //                    Console.WriteLine("Giving " + money + " out in change");
-        //                    money = 0;
-        //                    fanta.Nr--;
-        //                }
-        //                else if (fanta.Name == csoda && fanta.Nr == 0)
-        //                {
-        //                    Console.WriteLine("No fanta left");
-        //                }
-        //                else if (fanta.Name == csoda)
-        //                {
-        //                    Console.WriteLine("Need " + (15 - money) + " more");
-        //                }
-
-        //                break;
-        //            case "sprite":
-        //                var sprite = inventory[1];
-        //                if (sprite.Name == csoda && money > 14 && sprite.Nr > 0)
-        //                {
-        //                    Console.WriteLine("Giving sprite out");
-        //                    money -= 15;
-        //                    Console.WriteLine("Giving " + money + " out in change");
-        //                    money = 0;
-        //                    sprite.Nr--;
-        //                }
-        //                else if (sprite.Name == csoda && sprite.Nr == 0)
-        //                {
-        //                    Console.WriteLine("No sprite left");
-        //                }
-        //                else if (sprite.Name == csoda)
-        //                {
-        //                    Console.WriteLine("Need " + (15 - money) + " more");
-        //                }
-        //                break;
-        //            default:
-        //                Console.WriteLine("No such soda");
-        //                break;
-        //        }
-        //    }
-        //    if (input.StartsWith("sms order"))
-        //    {
-        //        var csoda = input.Split(' ')[2];
-        //        //Find out witch kind
-        //        switch (csoda)
-        //        {
-        //            case "coke":
-        //                if (inventory[0].Nr > 0)
-        //                {
-        //                    Console.WriteLine("Giving coke out");
-        //                    inventory[0].Nr--;
-        //                }
-        //                break;
-        //            case "sprite":
-        //                if (inventory[1].Nr > 0)
-        //                {
-        //                    Console.WriteLine("Giving sprite out");
-        //                    inventory[1].Nr--;
-        //                }
-        //                break;
-        //            case "fanta":
-        //                if (inventory[2].Nr > 0)
-        //                {
-        //                    Console.WriteLine("Giving fanta out");
-        //                    inventory[2].Nr--;
-        //                }
-        //                break;
-        //        }
-
-        //    }
-
-        //    if (input.Equals("recall"))
-        //    {
-        //        //Give money back
-        //        Console.WriteLine("Returning " + money + " to customer");
-        //        money = 0;
-        //    }
-
-        //}
+            if (request is Request.InsertMoneyRequest insertMoneyRequest)
+            {
+                //Add to credit
+                money += insertMoneyRequest.Money;
+                Console.WriteLine($"Adding {insertMoneyRequest.Money} to credit");
+            }
+            if (request is Request.OrderRequest orderRequest)
+            {
+                HandleOrderRequest(orderRequest.SodaType);
+            }
+            if (request is Request.SmsOrderRequest smsOrderRequest)
+            {
+                if(inventory.Sodas.Any(x => x.Type == smsOrderRequest.SodaType && x.Quantity > 0))
+                {
+                    Console.WriteLine($"Giving {smsOrderRequest.SodaType} out");
+                    inventory.TakeOneSodaOut(smsOrderRequest.SodaType);
+                }
+                else
+                {
+                    Console.WriteLine($"No {smsOrderRequest.SodaType} left");
+                }
+            }
+            if (request is Request.RecallRequest)
+            {
+                if(money > 0)
+                {
+                    Console.WriteLine("Returning " + money + " to customer");
+                    money = 0;
+                }
+                else
+                {
+                    Console.WriteLine("No Credit");
+                }
+            }
+        }
     }
+    public void DisplayMenu()
+    {
+        Console.WriteLine("\n\nAvailable commands:");
+        Console.WriteLine("insert (money) - Money put into money slot");
+        Console.WriteLine("order (coke, sprite, fanta) - Order from machine's inventory");
+        Console.WriteLine("sms order (coke, sprite, fanta) - Order sent by sms");
+        Console.WriteLine("recall - gives money back");
+        Console.WriteLine("-------");
+        Console.WriteLine("Inserted money: " + money);
+        Console.WriteLine("-------\n\n");
+    }
+    private void HandleOrderRequest(SodaType sodaType)
+    {
+        if (inventory.Sodas.Any(x => x.Type == sodaType && x.Quantity > 0))
+        {
+            var price = inventory.Sodas.First(x => x.Type == sodaType).Price;
+            if (money >= price)
+            {
+                Console.WriteLine($"Giving {sodaType} out");
+                money -= price;
+                if (money > 0)
+                {
+                    Console.WriteLine("Giving " + money + " out in change");
+                    money = 0;
+                }
+
+                inventory.TakeOneSodaOut(sodaType);
+            }
+            else
+                Console.WriteLine("Need " + (price - money) + " more");
+        }
+        else
+        {
+            Console.WriteLine($"No {sodaType} left");
+        }
+    }
+
+    private static Request? ExtractUserRequest(string? input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return null;
+
+        if (input.StartsWith("insert", true, CultureInfo.InvariantCulture))
+            return CreateInsertRequest(input);
+
+        if (input.StartsWith("order", true, CultureInfo.InvariantCulture))
+            return CreateOrderRequest(input);
+
+        if (input.StartsWith("sms order", true, CultureInfo.InvariantCulture))
+            return CreateSmsOrderRequest(input);
+
+        if (input.StartsWith("recall", true, CultureInfo.InvariantCulture))
+            return new Request.RecallRequest();
+
+        return null;
+    }
+
+    private static Request? CreateSmsOrderRequest(string input)
+    {
+        var inputs = input.Split(' ');
+        if (inputs.Length < 3)
+            return null;
+
+        var argument = inputs[2];
+
+        return
+            argument != "coke" && argument != "sprite" && argument != "fanta"
+                ? null
+                : argument == "coke"
+                    ? new Request.SmsOrderRequest(SodaType.Coke)
+                    : argument == "sprite"
+                        ? new Request.SmsOrderRequest(SodaType.Sprite)
+                        : new Request.SmsOrderRequest(SodaType.Fanta);
+
+    }
+
+    private static Request? CreateOrderRequest(string input)
+    {
+        var inputs = input.Split(' ');
+        if (inputs.Length < 2)
+            return null;
+
+        var argument = inputs[1];
+
+        return
+            argument != "coke" && argument != "sprite" && argument != "fanta"
+                ? null
+                : argument == "coke"
+                    ? new Request.OrderRequest(SodaType.Coke)
+                    : argument == "sprite"
+                        ? new Request.OrderRequest(SodaType.Sprite)
+                        : new Request.OrderRequest(SodaType.Fanta);
+    }
+
+    private static Request? CreateInsertRequest(string input)
+    {
+        var inputs = input.Split(' ');
+        if (inputs.Length < 2)
+            return null;
+
+        var argument = inputs[1];
+
+        return
+            decimal.TryParse(argument, out var value)
+                ? new Request.InsertMoneyRequest(value)
+                : null;
+    }
+
+
 }
